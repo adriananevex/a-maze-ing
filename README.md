@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by JoberDuarte and AdrianaNeves.*
+*This project has been created as part of the 42 curriculum by jouarte and aneves.*
 
 # A-Maze-ing
 
@@ -104,8 +104,8 @@ The generated object exposes the maze grid, metadata, and whether the `42` patte
 
 ## Project Management
 
-- JoberDuarte: maze generation, file output, configuration handling, and CLI integration.
-- AdrianaNeves: visual rendering, interaction flow, and presentation details.
+- Jober Duarte: maze generation, file output, configuration handling, and CLI integration.
+- Adriana Neves: visual rendering, interaction flow, and presentation details.
 
 The plan evolved from a minimal generator + writer into a project with reproducible generation, validation, ASCII visualization, and reusable importable code.
 
