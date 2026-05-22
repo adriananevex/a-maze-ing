@@ -3,12 +3,13 @@ from __future__ import annotations
 from collections import deque
 from maze.models import ALL_DIRECTIONS, Cell
 
+
 def shortest_path_letters(
-        grid: list[list[Cell]],
-        width: int,
-        height: int,
-        entry: tuple[int, int],
-        exit_: tuple[int, int],
+    grid: list[list[Cell]],
+    width: int,
+    height: int,
+    entry: tuple[int, int],
+    exit_: tuple[int, int],
 ) -> str:
     """Compute shortest valid path from entry to exit using BFS.
 
@@ -40,10 +41,10 @@ def shortest_path_letters(
             visited.add((nx, ny))
             parent[(nx, ny)] = ((x, y), direction.letter)
             queue.append((nx, ny))
-    
+
     if (tx, ty) not in visited:
         raise RuntimeError("No valid path found between entry and exit.")
-    
+
     moves: list[str] = []
     current = (tx, ty)
     while current != (ex, ey):

@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections import deque
+from typing import Callable, TypedDict
 
 import pygame
 
+from maze.generator import MazeGenerator
 from maze.models import ALL_DIRECTIONS, Cell, Direction
 from maze.solver import shortest_path_letters
 from maze.writer import write_maze_file
-
 
 CELL_SIZE = 36
 WALL_THICKNESS = 2
@@ -27,15 +28,34 @@ SEARCH_STEPS_PER_FRAME = 2
 PATH_STEPS_PER_FRAME = 1
 
 
-THEMES = [
+Color3 = tuple[int, int, int]
+Color4 = tuple[int, int, int, int]
+
+
+class Theme(TypedDict):
+    """Pygame color palette for the renderer."""
+
+    bg: Color3
+    cell_wall: Color3
+    entry: Color3
+    exit: Color3
+    path: Color3
+    path_glow: Color4
+    search: Color3
+    search_glow: Color4
+    text: Color3
+    warning: Color3
+
+
+THEMES: list[Theme] = [
     {
         "bg": (20, 20, 20),
         "cell_wall": (255, 255, 255),
-        "entry": (0, 200, 0),      
-        "exit": (200, 0, 0),      
-        "path": (0, 120, 255),    
+        "entry": (0, 200, 0),
+        "exit": (200, 0, 0),
+        "path": (0, 120, 255),
         "path_glow": (0, 120, 255, 0),
-        "search": (120, 120, 120), 
+        "search": (120, 120, 120),
         "search_glow": (120, 120, 120, 0),
         "text": (255, 255, 255),
         "warning": (255, 200, 0),
@@ -56,21 +76,21 @@ THEMES = [
 
 
 def _mix_color(
-    first: tuple[int, int, int],
-    second: tuple[int, int, int],
+    first: Color3,
+    second: Color3,
     ratio: float,
-) -> tuple[int, int, int]:
-    return tuple(
-        int(round(a * (1 - ratio) + b * ratio))
-        for a, b in zip(first, second)
-    )
+) -> Color3:
+    red = int(round(first[0] * (1 - ratio) + second[0] * ratio))
+    green = int(round(first[1] * (1 - ratio) + second[1] * ratio))
+    blue = int(round(first[2] * (1 - ratio) + second[2] * ratio))
+    return (red, green, blue)
 
 
 def _draw_cell_tile(
     surface: pygame.Surface,
     rect: pygame.Rect,
     cell: Cell,
-    theme: dict[str, tuple[int, ...]],
+    theme: Theme,
     x: int,
     y: int,
     is_pattern_42: bool = False,
@@ -78,11 +98,15 @@ def _draw_cell_tile(
     inset = rect.inflate(-2, -2)
     if is_pattern_42:
         pygame.draw.rect(surface, FILLED_BLOCK, inset, border_radius=CELL_RADIUS)
-        pygame.draw.rect(surface, FILLED_BLOCK_BORDER, inset, width=2, border_radius=CELL_RADIUS)
+        pygame.draw.rect(
+            surface, FILLED_BLOCK_BORDER, inset, width=2, border_radius=CELL_RADIUS
+        )
         return
 
     base = OPEN_CELL_A if (x + y) % 2 == 0 else OPEN_CELL_B
     rim = _mix_color(base, theme["bg"], 0.22)
+    pygame.draw.rect(surface, base, inset, border_radius=CELL_RADIUS)
+    pygame.draw.rect(surface, rim, inset, width=1, border_radius=CELL_RADIUS)
 
 
 def _draw_path_overlay(
@@ -90,7 +114,7 @@ def _draw_path_overlay(
     path_points: list[tuple[int, int]],
     ox: int,
     oy: int,
-    theme: dict[str, tuple[int, ...]],
+    theme: Theme,
 ) -> None:
     overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
 
@@ -113,7 +137,7 @@ def _draw_search_overlay(
     search_points: list[tuple[int, int]],
     ox: int,
     oy: int,
-    theme: dict[str, tuple[int, ...]],
+    theme: Theme,
 ) -> None:
     overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
 
@@ -128,7 +152,9 @@ def _draw_search_overlay(
         if tile_rect.width <= 0 or tile_rect.height <= 0:
             continue
         search_fill = tuple(theme["search"]) + (180,)
-        pygame.draw.rect(overlay, search_fill, tile_rect, border_radius=max(4, CELL_RADIUS - 2))
+        pygame.draw.rect(
+            overlay, search_fill, tile_rect, border_radius=max(4, CELL_RADIUS - 2)
+        )
 
     surface.blit(overlay, (0, 0))
 
@@ -136,7 +162,7 @@ def _draw_search_overlay(
 def _draw_marker(
     surface: pygame.Surface,
     rect: pygame.Rect,
-    color: tuple[int, int, int],
+    color: Color3,
 ) -> None:
     shadow = rect.inflate(4, 4)
     pygame.draw.rect(surface, (0, 0, 0), shadow, border_radius=CELL_RADIUS)
@@ -197,7 +223,7 @@ def _bfs_visit_order(
 
 
 def run_gui_session(
-    generator_factory: object,
+    generator_factory: Callable[[], MazeGenerator],
     width: int,
     height: int,
     entry: tuple[int, int],
@@ -211,7 +237,9 @@ def run_gui_session(
     maze_w = width * CELL_SIZE
     maze_h = height * CELL_SIZE
     info_h = 96
-    screen = pygame.display.set_mode((maze_w + 2 * PADDING, maze_h + 2 * PADDING + info_h))
+    screen = pygame.display.set_mode(
+        (maze_w + 2 * PADDING, maze_h + 2 * PADDING + info_h)
+    )
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("monospace", 20)
     status_font = pygame.font.SysFont("monospace", 16)
@@ -237,7 +265,9 @@ def run_gui_session(
         path_progress = 0
         animation_phase = "search"
 
-    def build_once() -> tuple[list[list[Cell]], str, list[tuple[int, int]], str, set[tuple[int, int]]]:
+    def build_once() -> (
+        tuple[list[list[Cell]], str, list[tuple[int, int]], str, set[tuple[int, int]]]
+    ):
         last_error: RuntimeError | None = None
         for _ in range(MAX_BUILD_ATTEMPTS):
             gen = generator_factory()
@@ -249,7 +279,13 @@ def run_gui_session(
             try:
                 path = shortest_path_letters(maze.grid, width, height, entry, exit_)
                 search_order = _bfs_visit_order(maze.grid, width, height, entry, exit_)
-                return maze.grid, path, search_order, local_status, maze.pattern_42_cells or set()
+                return (
+                    maze.grid,
+                    path,
+                    search_order,
+                    local_status,
+                    maze.pattern_42_cells or set(),
+                )
             except RuntimeError as exc:
                 # The centered '42' mask can occasionally disconnect entry and exit.
                 last_error = exc
@@ -280,7 +316,9 @@ def run_gui_session(
             else:
                 status_message = io_status
 
-    grid, path_moves, initial_search_order, status_message, pattern_42_cells = build_once()
+    grid, path_moves, initial_search_order, status_message, pattern_42_cells = (
+        build_once()
+    )
     persist_current_maze(grid, path_moves)
     restart_animation(initial_search_order, _path_points(entry, path_moves))
 
@@ -297,7 +335,13 @@ def run_gui_session(
                     running = False
                 elif event.key == pygame.K_r:
                     try:
-                        grid, path_moves, search_order, status_message, pattern_42_cells = build_once()
+                        (
+                            grid,
+                            path_moves,
+                            search_order,
+                            status_message,
+                            pattern_42_cells,
+                        ) = build_once()
                         persist_current_maze(grid, path_moves)
                         restart_animation(search_order, _path_points(entry, path_moves))
                     except RuntimeError as exc:
@@ -310,11 +354,15 @@ def run_gui_session(
 
         if show_path:
             if animation_phase == "search":
-                search_progress = min(len(search_points), search_progress + SEARCH_STEPS_PER_FRAME)
+                search_progress = min(
+                    len(search_points), search_progress + SEARCH_STEPS_PER_FRAME
+                )
                 if search_progress >= len(search_points):
                     animation_phase = "path"
             elif animation_phase == "path":
-                path_progress = min(len(path_points), path_progress + PATH_STEPS_PER_FRAME)
+                path_progress = min(
+                    len(path_points), path_progress + PATH_STEPS_PER_FRAME
+                )
                 if path_progress >= len(path_points):
                     animation_phase = "done"
 
@@ -345,17 +393,27 @@ def run_gui_session(
                 y1 = y0 + CELL_SIZE
 
                 if cell.has_wall(Direction.NORTH):
-                    pygame.draw.line(screen, theme["cell_wall"], (x0, y0), (x1, y0), WALL_THICKNESS)
+                    pygame.draw.line(
+                        screen, theme["cell_wall"], (x0, y0), (x1, y0), WALL_THICKNESS
+                    )
                 if cell.has_wall(Direction.EAST):
-                    pygame.draw.line(screen, theme["cell_wall"], (x1, y0), (x1, y1), WALL_THICKNESS)
+                    pygame.draw.line(
+                        screen, theme["cell_wall"], (x1, y0), (x1, y1), WALL_THICKNESS
+                    )
                 if cell.has_wall(Direction.SOUTH):
-                    pygame.draw.line(screen, theme["cell_wall"], (x0, y1), (x1, y1), WALL_THICKNESS)
+                    pygame.draw.line(
+                        screen, theme["cell_wall"], (x0, y1), (x1, y1), WALL_THICKNESS
+                    )
                 if cell.has_wall(Direction.WEST):
-                    pygame.draw.line(screen, theme["cell_wall"], (x0, y0), (x0, y1), WALL_THICKNESS)
+                    pygame.draw.line(
+                        screen, theme["cell_wall"], (x0, y0), (x0, y1), WALL_THICKNESS
+                    )
 
         if show_path:
             if search_progress > 0:
-                _draw_search_overlay(screen, search_points[:search_progress], ox, oy, theme)
+                _draw_search_overlay(
+                    screen, search_points[:search_progress], ox, oy, theme
+                )
             if path_progress > 0:
                 _draw_path_overlay(screen, path_points[:path_progress], ox, oy, theme)
 

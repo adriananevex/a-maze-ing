@@ -46,7 +46,9 @@ def _parse_int(value: str, key: str) -> int:
 def _parse_coords(value: str, key: str) -> tuple[int, int]:
     parts = value.split(",")
     if len(parts) != 2:
-        raise ConfigError(f"Invalid coordinate format for {key}: {value!r}. Expected x,y")
+        raise ConfigError(
+            f"Invalid coordinate format for {key}: {value!r}. Expected x,y"
+        )
     try:
         x = int(parts[0].strip())
         y = int(parts[1].strip())
@@ -116,9 +118,13 @@ def load_config(path_str: str) -> MazeConfig:
     xx, xy = exit_
 
     if not (0 <= ex < width and 0 <= ey < height):
-        raise ConfigError(f"ENTRY out of bounds: {entry} for WIDTH={width}, HEIGHT={height}")
+        raise ConfigError(
+            f"ENTRY out of bounds: {entry} for WIDTH={width}, HEIGHT={height}"
+        )
     if not (0 <= xx < width and 0 <= xy < height):
-        raise ConfigError(f"EXIT out of bounds: {exit_} for WIDTH={width}, HEIGHT={height}")
+        raise ConfigError(
+            f"EXIT out of bounds: {exit_} for WIDTH={width}, HEIGHT={height}"
+        )
     if entry == exit_:
         raise ConfigError("ENTRY and EXIT must be different.")
 

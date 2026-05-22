@@ -17,9 +17,9 @@ clean:
 	rm -rf dist build *.egg-info
 
 lint:
-	flake8 .
+	flake8 . --max-line-length=120
 	mypy . --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
 
 lint-strict:
-	flake8 .
+	flake8 . --max-line-length=120
 	mypy . --strict

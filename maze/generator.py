@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from maze.models import ALL_DIRECTIONS, Cell, Direction
 
 
-
 @dataclass
 class MazeData:
     """Generated maze grid and metadata."""
@@ -121,7 +120,9 @@ class MazeGenerator:
         grid[y][x].set_wall(direction, closed=True)
         grid[ny][nx].set_wall(direction.opposite, closed=True)
 
-    def _add_cycles_safely(self, grid: list[list[Cell]], extra_open_ratio: float) -> None:
+    def _add_cycles_safely(
+        self, grid: list[list[Cell]], extra_open_ratio: float
+    ) -> None:
         """Open additional walls to create cycles while avoiding 3x3 open areas."""
         candidates: list[tuple[int, int, Direction]] = []
         for y in range(self.height):
@@ -185,9 +186,11 @@ class MazeGenerator:
 
         return open_edges >= 11  # very open/plaza-like region
 
-    def _embed_42_pattern(self, grid: list[list[Cell]]) -> tuple[bool, set[tuple[int, int]]]:
+    def _embed_42_pattern(
+        self, grid: list[list[Cell]]
+    ) -> tuple[bool, set[tuple[int, int]]]:
         """Embed a '42' shape made of fully closed cells if maze is large enough.
-        
+
         Returns:
             Tuple of (applied: bool, pattern_cells: set of (x, y) coordinates).
         """

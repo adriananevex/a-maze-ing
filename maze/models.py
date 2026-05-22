@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+
 class Direction(Enum):
     """Cardinal directions with bit position and coordinate delta."""
 
@@ -17,7 +18,7 @@ class Direction(Enum):
     def bit(self) -> int:
         """Return bit index used in hex wall encoding."""
         return self.value[0]
-    
+
     @property
     def dx(self) -> int:
         """Return x-axis delta."""
@@ -32,7 +33,7 @@ class Direction(Enum):
     def letter(self) -> str:
         """Return single-letter movement representation."""
         return self.value[3]
-    
+
     @property
     def opposite(self) -> "Direction":
         """Return opposite cardinal direction."""
@@ -44,12 +45,14 @@ class Direction(Enum):
             return Direction.WEST
         return Direction.EAST
 
+
 ALL_DIRECTIONS: tuple[Direction, ...] = (
     Direction.NORTH,
     Direction.EAST,
     Direction.SOUTH,
     Direction.WEST,
 )
+
 
 @dataclass
 class Cell:
@@ -69,7 +72,7 @@ class Cell:
             self.walls |= mask
         else:
             self.walls &= ~mask
-    
+
     def to_hex(self) -> str:
         """Encode cell walls as uppercase hexadecimal digit."""
         return format(self.walls, "X")

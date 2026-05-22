@@ -8,10 +8,8 @@ from maze.config import load_config
 from maze.errors import ConfigError
 from maze.generator import MazeGenerator
 from maze.renderer_ascii import interactive_ascii_session
-from maze.renderer_gui import run_gui_session
 from maze.solver import shortest_path_letters
 from maze.writer import write_maze_file
-
 
 MAX_BUILD_ATTEMPTS = 24
 
@@ -32,7 +30,9 @@ def main() -> int:
         def generator_factory() -> MazeGenerator:
             """Create a generator with changing seed on each regeneration."""
             nonlocal regen_counter
-            effective_seed = config.seed + regen_counter if config.seed is not None else None
+            effective_seed = (
+                config.seed + regen_counter if config.seed is not None else None
+            )
             regen_counter += 1
             return MazeGenerator(
                 width=config.width,
@@ -93,6 +93,14 @@ def main() -> int:
                 perfect=config.perfect,
             )
         elif config.display == "GUI":
+            try:
+                from maze.renderer_gui import run_gui_session
+            except ModuleNotFoundError as exc:
+                raise RuntimeError(
+                    "GUI display requires the optional 'pygame' dependency. "
+                    "Install it to use DISPLAY=GUI."
+                ) from exc
+
             run_gui_session(
                 generator_factory=generator_factory,
                 width=config.width,
